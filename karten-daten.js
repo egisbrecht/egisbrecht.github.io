@@ -1,5 +1,5 @@
-// Kartendaten für Lernkarten.html (Lernen und Drucken)
-// Neue Karten nur hier eintragen.
+// Kartendaten für Lernkarten.html – enthält nur Daten, die Logik steckt in Lernkarten.html.
+// Neue Karten hier eintragen oder in der Seite unter „⋯ Mehr → Karten bearbeiten“.
 
 const BLUT = [
   // ---------- Aufgaben des Blutes ----------
@@ -331,35 +331,12 @@ const ZYTOLOGIE = [
 
 // ---------- Bereiche ----------
 // Neuer Bereich: Karten-Liste oben anlegen und hier eine Zeile ergänzen – das Menü passt sich automatisch an.
+// Karten lassen sich auch direkt in der Seite anlegen: „⋯ Mehr → Karten bearbeiten“.
 //   karten:   [{ thema, front, back }, …]        – Frage/Antwort-Karten
 //   vokabeln: [[Begriff, Bedeutung, Thema], …]   – Vokabeln (mit Richtungswechsel Latein ⇄ Deutsch)
+// Optional je Karte: bild: "bilder/datei.jpg", bildSeite: "front" (Frage) oder "back" (Antwort)
 const BEREICHE = {
   blut: { name: "Anatomie Blut", icon: "🩸", farbe: "#b3001b", karten: BLUT },
   vok:  { name: "Vokabeln",      icon: "📖", farbe: "#e65100", vokabeln: VOKABELN },
   zyto: { name: "Zytologie",     icon: "🔬", farbe: "#00796b", karten: ZYTOLOGIE }
 };
-
-const stripHtml = s => s.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-
-// Jede Karte: { id, bereich, thema, front, back, [begriff, bedeutung] }
-// Die id entspricht dem alten Format "bereich|Vorderseitentext", damit gespeicherte Statistiken erhalten bleiben.
-const KARTEN = [];
-Object.entries(BEREICHE).forEach(([bereich, b]) => {
-  (b.karten || []).forEach(k => KARTEN.push({ bereich, ...k }));
-  (b.vokabeln || []).forEach(([begriff, bedeutung, thema]) => KARTEN.push({
-    bereich, thema, begriff, bedeutung,
-    front: begriff,
-    back: `<div class="vok-answer"><b>${begriff}</b><br>${bedeutung}</div>`
-  }));
-});
-KARTEN.forEach(k => { k.id = k.key || k.bereich + "|" + stripHtml(k.front); });
-
-// Vokabel in Richtung Deutsch → Fachbegriff. Fragen (z. B. „Die 5 Kardinalsymptome…?“) bleiben unverändert.
-function vokabelUmdrehen(k) {
-  if (!k.begriff || k.begriff.endsWith("?")) return k;
-  const gleich = KARTEN.filter(x => x !== k && x.bereich === k.bereich && x.begriff &&
-    x.bedeutung.toLowerCase() === k.bedeutung.toLowerCase()).map(x => x.begriff);
-  const auch = gleich.length ? `<div class="tip">Gleiche Bedeutung: ${gleich.join(", ")}</div>` : "";
-  return { ...k, id: k.id + "|rev", front: k.bedeutung,
-    back: `<div class="vok-answer"><b>${k.begriff}</b></div>${auch}` };
-}

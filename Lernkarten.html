@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#b3001b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lernkarten">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>Lernkarten</title>
+<style>
+  :root {
+    --bg: #eef2f7; --text: #222; --muted: #666; --card: #fff; --back: #fff8e1;
+    --btn: #fff; --btn-text: #222; --accent: #b3001b; --tip: #8a4b00; --shadow: rgba(0,0,0,.15); --border: #ccc;
+  }
+  [data-theme="dark"] {
+    --bg: #121418; --text: #e6e6e6; --muted: #9aa0a6; --card: #1f2329; --back: #2a2620;
+    --btn: #2a2f36; --btn-text: #e6e6e6; --accent: #ff4d63; --tip: #f0b46a; --shadow: rgba(0,0,0,.5); --border: #444;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: Segoe UI, system-ui, Arial, sans-serif; background: var(--bg); margin: 0; padding: 16px 16px 40px; color: var(--text); }
+  header { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 1200px; margin: 0 auto 12px; position: relative; }
+  h1 { margin: 0; color: var(--accent); font-size: 28px; cursor: pointer; }
+  #theme { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; }
+  button, select, input, textarea { font: inherit; font-size: 15px; color: var(--btn-text); }
+  button { border: none; border-radius: 8px; padding: 9px 14px; cursor: pointer; background: var(--btn); box-shadow: 0 1px 3px var(--shadow); min-height: 40px; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.active { background: var(--accent); color: #fff; }
+  button.primary { background: #2e7d32; color: #fff; font-weight: 600; }
+
+  /* ---------- Ansichten ---------- */
+  #learn, #statsView, #editView, #printView { display: none; }
+  body:not([data-view="browse"]) .browse { display: none; }
+  body[data-view="learn"] #learn, body[data-view="stats"] #statsView, body[data-view="edit"] #editView { display: block; }
+  .viewbar { display: flex; gap: 8px; align-items: center; max-width: 900px; margin: 0 auto 14px; }
+  .viewbar h2 { flex: 1; margin: 0; font-size: 20px; text-align: center; }
+  .panel { max-width: 900px; margin: 0 auto 14px; background: var(--card); border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px var(--shadow); }
+  .panel h3 { margin: 0 0 12px; font-size: 16px; }
+  .hint-small { font-size: 12.5px; color: var(--muted); }
+
+  /* ---------- Auswahlleiste ---------- */
+  .toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(200px, 1.4fr); gap: 8px; max-width: 900px; margin: 0 auto 10px; }
+  .field { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+  .field select, .field input { width: 100%; min-height: 42px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 15px; }
+  .bereich-sel { font-weight: 600; border-left: 5px solid var(--bereich, var(--accent)) !important; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; max-width: 900px; margin: 0 auto 14px; }
+  #richtung { display: none; }
+  body.has-vokabeln #richtung { display: inline-flex; }
+  #richtung button { border-radius: 0; }
+  #richtung button:first-child { border-radius: 8px 0 0 8px; }
+  #richtung button:last-child { border-radius: 0 8px 8px 0; }
+  #richtung button.active { background: #e65100; }
+  details.more { position: relative; }
+  details.more summary { list-style: none; cursor: pointer; border-radius: 8px; padding: 9px 14px; background: var(--btn); color: var(--btn-text); box-shadow: 0 1px 3px var(--shadow); min-height: 40px; display: flex; align-items: center; user-select: none; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more[open] summary { background: #555; color: #fff; }
+  .menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 250px; background: var(--card); border-radius: 10px; box-shadow: 0 6px 20px var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .menu button { box-shadow: none; background: transparent; text-align: left; width: 100%; }
+  .menu button:hover { background: var(--bg); }
+  .menu hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; width: 100%; }
+
+  /* ---------- Übersicht / Statistik oben ---------- */
+  #summary { text-align: center; margin: 0 auto 18px; color: var(--muted); font-size: 14px; max-width: 600px; }
+  .due-line { font-size: 15px; color: var(--text); margin-bottom: 6px; }
+  .boxbar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--border); margin: 6px 0; }
+  .boxbar span { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 12.5px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .s-neu { background: #9e9e9e; } .s-falsch { background: #c62828; } .s-lernen { background: #ef8f00; } .s-sitzt { background: #2e7d32; }
+
+  /* ---------- Karten ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto; }
+  .empty-msg { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 30px; }
+  .card { perspective: 1000px; height: 270px; cursor: pointer; position: relative; }
+  .inner { position: relative; width: 100%; height: 100%; transition: transform .45s; transform-style: preserve-3d; }
+  .card.flipped .inner { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 12px; padding: 34px 16px 36px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 3px 8px var(--shadow); overflow: auto; background: var(--card); }
+  .front { text-align: center; font-size: 19px; font-weight: 600; }
+  .back { background: var(--back); transform: rotateY(180deg); font-size: 15.5px; line-height: 1.45; }
+  .back ul, .back ol { margin: 4px 0; padding-left: 22px; }
+  .small { font-weight: normal; font-size: 14px; color: var(--muted); }
+  .tag { position: absolute; top: 8px; left: 12px; font-size: 12px; font-weight: 600; color: #fff; padding: 2px 8px; border-radius: 10px; max-width: 55%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vok-answer { text-align: center; font-size: 18px; line-height: 1.5; }
+  .tip { margin-top: 8px; font-style: italic; color: var(--tip); }
+  .badge { position: absolute; top: 8px; right: 12px; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 10px; color: #fff; }
+  .card-img { display: block; max-width: 100%; max-height: 110px; margin: 6px auto; border-radius: 6px; object-fit: contain; }
+  .rate { position: absolute; left: 0; right: 0; bottom: 6px; display: flex; gap: 8px; justify-content: center; }
+  .rate button { min-height: 30px; padding: 4px 12px; font-size: 13.5px; }
+  .no { background: #c62828 !important; color: #fff !important; }
+  .yes { background: #2e7d32 !important; color: #fff !important; }
+
+  /* ---------- Lernmodus ---------- */
+  #learn { max-width: 640px; margin: 0 auto; }
+  .learn-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .learn-top .progress { color: var(--muted); font-size: 14px; text-align: center; flex: 1; }
+  .pbar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 12px; }
+  .pbar span { display: block; height: 100%; background: #2e7d32; transition: width .3s; }
+  #learnCard { height: min(60vh, 440px); height: min(60dvh, 440px); transition: transform .2s; touch-action: pan-y; }
+  #learnCard.dragging { transition: none; }
+  #learnCard::after { content: attr(data-swipe); position: absolute; top: 40%; left: 50%; transform: translateX(-50%); font-size: 22px; font-weight: 700; padding: 6px 16px; border-radius: 10px; color: #fff; opacity: 0; pointer-events: none; z-index: 5; transition: opacity .1s; }
+  #learnCard[data-swipe="✅ Gewusst"]::after { opacity: .95; background: #2e7d32; }
+  #learnCard[data-swipe="❌ Nicht gewusst"]::after { opacity: .95; background: #c62828; }
+  #learnCard .front { font-size: 24px; }
+  #learnCard .back { font-size: 17px; }
+  #learnCard .vok-answer { font-size: 22px; }
+  #learnCard .card-img { max-height: 200px; }
+  .learn-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .learn-actions button { flex: 1; min-height: 56px; font-size: 17px; font-weight: 600; }
+  #flipBtn { background: var(--accent); color: #fff; }
+  .kbd, .swipe-hint { display: none; text-align: center; color: var(--muted); font-size: 13px; margin-top: 12px; }
+  kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-family: inherit; font-size: 12px; background: var(--card); }
+  @media (hover: hover) and (pointer: fine) { .kbd { display: block; } }
+  @media (pointer: coarse) { .swipe-hint { display: block; } }
+  .done { text-align: center; background: var(--card); border-radius: 12px; padding: 28px 18px; box-shadow: 0 3px 8px var(--shadow); }
+  .done h2 { margin-top: 0; }
+  .done .controls { margin-top: 18px; }
+
+  /* ---------- Statistik ---------- */
+  .kacheln { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 900px; margin: 0 auto 14px; }
+  .kachel { background: var(--card); border-radius: 12px; padding: 14px 10px; text-align: center; box-shadow: 0 2px 6px var(--shadow); }
+  .kachel b { display: block; font-size: 28px; color: var(--text); }
+  .kachel span { color: var(--muted); font-size: 13px; }
+  .chart { display: flex; align-items: flex-end; gap: 4px; height: 150px; }
+  .chart .day { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+  .chart .day i { display: block; }
+  .chart .day i.ok { background: #2e7d32; } .chart .day i.fail { background: #c62828; }
+  .chart .day i:first-child { border-radius: 4px 4px 0 0; }
+  .chart-labels { display: flex; gap: 4px; margin-top: 4px; }
+  .chart-labels span { flex: 1; text-align: center; font-size: 11px; color: var(--muted); }
+  .chart-labels span.heute { color: var(--text); font-weight: 700; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: none; }
+  .row .name { width: 38%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .name small { display: block; color: var(--muted); font-size: 12px; }
+  .row .boxbar { flex: 1; margin: 0; }
+  .row .wert { width: 70px; text-align: right; font-size: 13px; color: var(--muted); }
+  .row button { min-height: 32px; padding: 4px 10px; font-size: 13.5px; }
+
+  /* ---------- Karten bearbeiten ---------- */
+  .edit-list { list-style: none; padding: 0; margin: 0; }
+  .edit-list li { display: flex; gap: 6px; align-items: center; padding: 8px 2px; border-bottom: 1px solid var(--border); }
+  .edit-list .txt { flex: 1; min-width: 0; }
+  .edit-list .txt small { display: block; color: var(--muted); font-size: 12px; }
+  .edit-list .txt div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .edit-list button { min-height: 34px; padding: 4px 10px; }
+  .chip { font-size: 11px; padding: 1px 7px; border-radius: 8px; color: #fff; margin-left: 6px; font-style: normal; }
+  .chip.neu { background: #1565c0; } .chip.geaendert { background: #ef8f00; }
+  .notice { background: #fff3cd; color: #5c4400; border-radius: 8px; padding: 10px 12px; font-size: 13.5px; margin-bottom: 12px; }
+  dialog { border: none; border-radius: 14px; padding: 0; width: min(560px, 94vw); max-height: 92vh; background: var(--card); color: var(--text); box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  dialog::backdrop { background: rgba(0,0,0,.55); }
+  dialog form { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  dialog h3 { margin: 0; }
+  dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  dialog input, dialog textarea, dialog select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  dialog input[type=color] { height: 42px; padding: 2px; }
+  dialog textarea { min-height: 80px; resize: vertical; }
+  .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+  .img-preview img { max-width: 100%; max-height: 160px; border-radius: 8px; display: block; }
+
+  /* ---------- Hinweis unten (mit „Rückgängig“) ---------- */
+  #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translate(-50%, 200%); background: #333; color: #fff; padding: 8px 10px 8px 14px; border-radius: 10px; display: flex; gap: 10px; align-items: center; z-index: 50; transition: transform .25s; box-shadow: 0 4px 14px rgba(0,0,0,.4); max-width: 92vw; font-size: 14.5px; }
+  #toast.show { transform: translate(-50%, 0); }
+  #toast button { background: transparent; color: #ffb74d; box-shadow: none; font-weight: 700; min-height: 32px; padding: 4px 8px; }
+
+  /* ---------- Smartphone ---------- */
+  @media (max-width: 600px) {
+    body { padding: 10px 10px 30px; }
+    h1 { font-size: 22px; }
+    header { justify-content: flex-start; }
+    .toolbar { grid-template-columns: 1fr 1fr; }
+    .toolbar .field.search { grid-column: 1 / -1; }
+    .actions { gap: 6px; }
+    .actions > button, .actions > details { flex: 1 1 auto; }
+    .actions details.more summary { justify-content: center; }
+    #richtung { order: 10; flex-basis: 100%; }
+    #richtung button { flex: 1; }
+    .grid { grid-template-columns: 1fr; gap: 12px; }
+    .card { height: 240px; }
+    .learn-actions { position: sticky; bottom: 0; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: var(--bg); }
+    #learnCard .front { font-size: 21px; }
+    .nur-pc { display: none !important; }
+    .row .name { width: 45%; }
+    .row .wert { width: 54px; }
+    .kacheln { grid-template-columns: repeat(2, 1fr); }
+    .kachel b { font-size: 24px; }
+  }
+
+  /* ---------- Druckansicht (A4, 8 Karten pro Blatt, beidseitig) ---------- */
+  @page { size: A4 portrait; margin: 0; }
+  #printView { font-family: Arial, Helvetica, sans-serif; color: #000; }
+  body[data-view="print"] { background: #ccc; padding: 1px 0 0; }
+  body[data-view="print"] > :not(#printView):not(script):not(dialog) { display: none !important; }
+  body[data-view="print"] #printView { display: block; }
+  .p-info { max-width: 190mm; margin: 10mm auto; padding: 10px 14px; background: #fff3cd; border: 1px solid #e0c36a; border-radius: 6px; font-size: 14px; line-height: 1.5; color: #000; }
+  .p-info h2 { margin: 0 0 6px; color: #b3001b; }
+  .p-info .p-links { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e0c36a; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .p-info button { background: #fff; color: #000; min-height: 34px; padding: 5px 12px; }
+  .p-info button.active { background: #b3001b; color: #fff; }
+  .p-sheet { width: 210mm; height: 297mm; padding: 10mm; margin: 0 auto 10mm; background: #fff; box-shadow: 0 0 6px rgba(0,0,0,.3); break-after: page; page-break-after: always; position: relative; }
+  .p-sheet-label { position: absolute; top: 3mm; right: 10mm; font-size: 9px; color: #888; }
+  .p-grid { display: grid; grid-template-columns: 95mm 95mm; grid-template-rows: repeat(4, 69.25mm); width: 190mm; height: 277mm; }
+  .p-card { border: 1px dashed #777; padding: 6mm 6mm 5mm; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; }
+  .p-card.empty { border-color: #ddd; }
+  .p-tag { position: absolute; top: 2.5mm; left: 3mm; font-size: 8pt; font-weight: bold; padding: 0.5mm 2mm; border: 1px solid #000; border-radius: 3mm; }
+  .p-side { position: absolute; top: 2.5mm; right: 3mm; font-size: 7pt; color: #888; }
+  .p-num { position: absolute; bottom: 2mm; right: 3mm; font-size: 7pt; color: #666; }
+  .p-front { text-align: center; font-size: 14pt; font-weight: bold; line-height: 1.35; }
+  .p-back { font-size: 10.5pt; line-height: 1.4; }
+  .p-back ul, .p-back ol { margin: 0; padding-left: 5mm; }
+  .p-back .tip { margin-top: 2mm; font-style: italic; font-size: 9.5pt; color: #000; border-top: 1px dotted #999; padding-top: 1.5mm; }
+  .p-sub { font-size: 8.5pt; font-weight: normal; color: #777; margin-top: 2mm; }
+  .p-img { display: block; max-width: 100%; max-height: 30mm; margin: 1mm auto; }
+  #printView .vok-answer { font-size: 13pt; line-height: 1.45; }
+  #printView .small { font-size: 11pt; color: #000; }
+  @media print {
+    body[data-view="print"] { background: none; padding: 0; }
+    .p-info { display: none; }
+    .p-sheet { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body data-view="browse">
+<header>
+  <h1 id="home" title="Zur Übersicht">Lernkarten</h1>
+  <button id="theme" title="Hell / Dunkel umschalten">🌙</button>
+</header>
+
+<!-- ==================== Übersicht ==================== -->
+<div class="browse">
+  <div class="toolbar">
+    <label class="field">Bereich
+      <select id="bereichSel" class="bereich-sel"></select>
+    </label>
+    <label class="field">Thema
+      <select id="themaSel"></select>
+    </label>
+    <label class="field search">Suche
+      <input type="search" id="search" placeholder="🔍 Frage oder Antwort …" autocomplete="off">
+    </label>
+  </div>
+
+  <div class="actions">
+    <button id="learnStart" class="primary" title="Fällige und neue Karten abfragen">▶ Lernen</button>
+    <button id="shuffle" title="Schwache und neue Karten kommen nach vorne">🔀 Mischen</button>
+    <button id="statsOpen" title="Lernstatistik">📊</button>
+    <details class="more">
+      <summary>⋯ Mehr</summary>
+      <div class="menu">
+        <button id="learnAll">🔁 Alle Karten wiederholen (auch nicht fällige)</button>
+        <button id="reset">↺ Alle Karten zudecken</button>
+        <button id="editOpen">✏️ Karten bearbeiten</button>
+        <button id="print" class="nur-pc">🖨 Drucken</button>
+        <hr>
+        <button id="exportBtn">💾 Sicherung speichern (Fortschritt &amp; eigene Karten)</button>
+        <button id="importBtn">📂 Sicherung laden</button>
+        <hr>
+        <button id="statsReset">🗑 Lernfortschritt löschen</button>
+      </div>
+    </details>
+    <div id="richtung">
+      <button data-richtung="normal" class="active" title="Fachbegriff vorne, Bedeutung hinten">Latein → Deutsch</button>
+      <button data-richtung="rev" title="Bedeutung vorne, Fachbegriff hinten">Deutsch → Latein</button>
+    </div>
+  </div>
+
+  <div id="summary"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- ==================== Lernmodus ==================== -->
+<section id="learn">
+  <div class="learn-top">
+    <button id="learnExit">✕ Beenden</button>
+    <div class="progress" id="learnProgress"></div>
+    <button id="learnUndo" title="Letzte Bewertung rückgängig (Z)">↶ Zurück</button>
+  </div>
+  <div class="pbar"><span id="learnBar"></span></div>
+  <div id="learnBody"></div>
+  <div class="kbd"><kbd>Leertaste</kbd> umdrehen · <kbd>1</kbd> / <kbd>←</kbd> nicht gewusst · <kbd>2</kbd> / <kbd>→</kbd> gewusst · <kbd>Z</kbd> rückgängig · <kbd>Esc</kbd> beenden</div>
+  <div class="swipe-hint">Antippen zum Umdrehen · danach wischen: <b>→ gewusst</b> · <b>← nicht gewusst</b></div>
+</section>
+
+<!-- ==================== Statistik ==================== -->
+<section id="statsView">
+  <div class="viewbar"><button class="back-btn">← Zurück</button><h2>📊 Lernstatistik</h2><span style="width:90px"></span></div>
+  <div class="kacheln" id="statKacheln"></div>
+  <div class="panel"><h3>Letzte 14 Tage</h3><div id="statChart"></div>
+    <div class="legend" style="margin-top:8px"><span><i class="s-sitzt"></i>gewusst</span><span><i class="s-falsch"></i>nicht gewusst</span></div></div>
+  <div class="panel"><h3>Stand je Bereich</h3><div id="statBereiche"></div></div>
+  <div class="panel"><h3>Schwierigste Themen</h3><div id="statSchwach"></div></div>
+</section>
+
+<!-- ==================== Karten bearbeiten ==================== -->
+<section id="editView">
+  <div class="viewbar"><button class="back-btn">← Zurück</button><h2>✏️ Karten bearbeiten</h2><span style="width:90px"></span></div>
+  <div class="panel">
+    <div id="editNotice"></div>
+    <div class="toolbar" style="margin-bottom:10px">
+      <label class="field">Bereich <select id="editBereich" class="bereich-sel"></select></label>
+      <label class="field">Thema <select id="editThema"></select></label>
+      <label class="field search">Suche <input type="search" id="editSuche" placeholder="🔍 …" autocomplete="off"></label>
+    </div>
+    <div class="actions" style="justify-content:flex-start">
+      <button id="editNeu" class="primary">＋ Neue Karte</button>
+      <button id="editNeuerBereich">＋ Neuer Bereich</button>
+      <button id="editBereichWeg" style="display:none">🗑 Bereich löschen</button>
+      <button id="editGeloeschte" style="display:none"></button>
+    </div>
+    <ul class="edit-list" id="editList"></ul>
+  </div>
+</section>
+
+<dialog id="karteDlg">
+  <form id="karteForm" onsubmit="return false">
+    <h3 id="karteTitel">Neue Karte</h3>
+    <label>Thema <input id="fThema" list="themenListe" autocomplete="off" placeholder="z. B. Blutgerinnung"></label>
+    <datalist id="themenListe"></datalist>
+    <div id="fFrage" style="display:contents">
+      <label>Vorderseite (Frage) <textarea id="fFront" rows="2"></textarea></label>
+      <label>Rückseite (Antwort) <textarea id="fBack" rows="5"></textarea></label>
+      <div class="hint-small">Formatierung: Zeile mit „- “ = Aufzählung · „1. “ = nummeriert · **fett**</div>
+      <label>Merkhilfe (optional) <input id="fTip"></label>
+    </div>
+    <div id="fVok" style="display:contents">
+      <label>Begriff <input id="fBegriff"></label>
+      <label>Bedeutung <textarea id="fBedeutung" rows="2"></textarea></label>
+    </div>
+    <label>Bild (optional) <input type="file" id="fBild" accept="image/*"></label>
+    <div class="img-preview" id="fBildVorschau"></div>
+    <label id="fBildSeiteLbl">Bild zeigen auf
+      <select id="fBildSeite"><option value="front">Vorderseite (Frage)</option><option value="back">Rückseite (Antwort)</option></select>
+    </label>
+    <div class="dlg-actions">
+      <button type="button" id="fBildWeg">Bild entfernen</button>
+      <span style="flex:1"></span>
+      <button type="button" id="fAbbrechen">Abbrechen</button>
+      <button type="button" id="fSpeichern" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="bereichDlg">
+  <form onsubmit="return false">
+    <h3>Neuer Bereich</h3>
+    <label>Name <input id="bName" placeholder="z. B. Anatomie Haut"></label>
+    <label>Symbol (Emoji) <input id="bIcon" value="📘" maxlength="4"></label>
+    <label>Farbe <input type="color" id="bFarbe" value="#1565c0"></label>
+    <label>Art der Karten
+      <select id="bTyp"><option value="karten">Frage / Antwort</option><option value="vokabeln">Vokabeln (Begriff / Bedeutung)</option></select>
+    </label>
+    <div class="dlg-actions">
+      <button type="button" id="bAbbrechen">Abbrechen</button>
+      <button type="button" id="bSpeichern" class="primary">Anlegen</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ==================== Druckansicht ==================== -->
+<section id="printView">
+  <div class="p-info">
+    <h2>Lernkarten – Druckansicht</h2>
+    <div class="p-links">
+      <button class="back-btn">← Zurück zu den Lernkarten</button>
+      <button data-druck="auswahl" class="active">Aktuelle Auswahl</button>
+      <button data-druck="alle">Alle Karten</button>
+      <span>Auswahl: <b id="printAuswahl"></b></span>
+    </div>
+    <b>Anleitung zum Drucken:</b><br>
+    1. Auf <b>Jetzt drucken</b> klicken (Strg+P) → Papier <b>A4</b>, Skalierung <b>100 % / „Tatsächliche Größe“</b>, Ränder <b>„Keine“</b>, Hintergrundgrafiken an.<br>
+    2. <b>Beidseitig</b> drucken mit <b>„an langer Kante spiegeln“</b> – dann liegt jede Antwort genau hinter ihrer Frage.<br>
+    &nbsp;&nbsp;&nbsp;Ohne Duplexdrucker: erst die ungeraden Seiten (Vorderseiten) drucken, Papier wenden und wieder einlegen, dann die geraden Seiten (Rückseiten).<br>
+    3. Entlang der gestrichelten Linien ausschneiden → <b>8 Karten pro Blatt</b> (ca. 9,5 × 7 cm).<br>
+    <button onclick="window.print()" style="margin-top:6px">🖨 Jetzt drucken</button>
+  </div>
+  <div id="printOut"></div>
+</section>
+
+<div id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+
+<script src="karten-daten.js"></script>
+<script>
+// ==================== Hilfsfunktionen ====================
+const $ = id => document.getElementById(id);
+const store = {
+  get(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
+  set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
+};
+const DAY = 86400000;
+const heute0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const tagKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const tagVor = n => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return d; };
+const stripHtml = s => String(s).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const mischen = list => { const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function download(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+let toastTimer;
+function toast(text, btnText, onBtn, ms = 5000) {
+  $("toastText").textContent = text;
+  const btn = $("toastBtn");
+  btn.style.display = btnText ? "" : "none";
+  btn.textContent = btnText || "";
+  btn.onclick = () => { hideToast(); onBtn && onBtn(); };
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, ms);
+}
+const hideToast = () => $("toast").classList.remove("show");
+
+// ==================== Karten aufbauen (Datei + eigene Änderungen) ====================
+// Eigene Änderungen liegen im Browser: { bereiche: {id: {...}}, karten: {id: Karte}, geloescht: [id] }
+const EIGENE_KEY = "lernkarten-eigene";
+let eigene = Object.assign({ bereiche: {}, karten: {}, geloescht: [] }, store.get(EIGENE_KEY, {}));
+function saveEigene() {
+  if (!store.set(EIGENE_KEY, eigene)) alert("Der Browser-Speicher ist voll. Bitte kleinere Bilder verwenden oder die Karten als Datei herunterladen.");
+}
+
+let ALLE_BEREICHE = {};
+let KARTEN = [];
+const FELDER = ["bereich", "thema", "front", "back", "begriff", "bedeutung", "bild", "bildSeite"];
+const gleicheKarte = (a, b) => FELDER.every(f => (a[f] || "") === (b[f] || ""));
+const abgeleiteteId = k => k.bereich + "|" + stripHtml(k.begriff !== undefined ? k.begriff : k.front);
+
+function vervollstaendigen(k) {
+  if (k.begriff !== undefined) {
+    k.front = k.begriff;
+    k.back = `<div class="vok-answer"><b>${k.begriff}</b><br>${k.bedeutung}</div>`;
+  }
+  return k;
+}
+
+function baueKarten() {
+  ALLE_BEREICHE = {};
+  Object.entries(BEREICHE).forEach(([id, b]) => ALLE_BEREICHE[id] = { name: b.name, icon: b.icon, farbe: b.farbe, vokabeln: !!b.vokabeln });
+  let aufgeraeumt = false;
+  Object.entries(eigene.bereiche).forEach(([id, b]) => {
+    if (ALLE_BEREICHE[id]) { delete eigene.bereiche[id]; aufgeraeumt = true; }
+    else ALLE_BEREICHE[id] = { ...b, eigen: true };
+  });
+
+  const liste = [];
+  Object.entries(BEREICHE).forEach(([bereich, b]) => {
+    (b.karten || []).forEach(k => liste.push({ bereich, ...k }));
+    (b.vokabeln || []).forEach(v => liste.push(Array.isArray(v)
+      ? { bereich, begriff: v[0], bedeutung: v[1], thema: v[2] }
+      : { bereich, ...v }));
+  });
+  // Die id ist "bereich|Vorderseitentext" (oder key) – daran hängt der gespeicherte Lernfortschritt
+  liste.forEach(k => { vervollstaendigen(k); k.id = k.key || abgeleiteteId(k); });
+  const index = new Map(liste.map((k, i) => [k.id, i]));
+
+  Object.entries(eigene.karten).forEach(([id, e]) => {
+    const k = vervollstaendigen({ ...e, id });
+    if (index.has(id)) {
+      // Änderung steht inzwischen genauso in der Datei → lokale Kopie nicht mehr nötig
+      if (gleicheKarte(liste[index.get(id)], k)) { delete eigene.karten[id]; aufgeraeumt = true; return; }
+      k.geaendert = true;
+      liste[index.get(id)] = k;
+    } else {
+      k.eigen = true;
+      liste.push(k);
+    }
+  });
+  const vorher = eigene.geloescht.length;
+  eigene.geloescht = eigene.geloescht.filter(id => index.has(id) || eigene.karten[id]);
+  if (eigene.geloescht.length !== vorher) aufgeraeumt = true;
+  const weg = new Set(eigene.geloescht);
+  KARTEN = liste.filter(k => !weg.has(k.id) && ALLE_BEREICHE[k.bereich]);
+  if (aufgeraeumt) saveEigene();
+}
+
+// Vokabel in Richtung Deutsch → Fachbegriff. Fragen (z. B. „Die 5 Kardinalsymptome…?“) bleiben unverändert.
+function vokabelUmdrehen(k) {
+  if (k.begriff === undefined || String(k.begriff).endsWith("?")) return k;
+  const gleich = KARTEN.filter(x => x !== k && x.bereich === k.bereich && x.begriff !== undefined &&
+    String(x.bedeutung).toLowerCase() === String(k.bedeutung).toLowerCase()).map(x => x.begriff);
+  const auch = gleich.length ? `<div class="tip">Gleiche Bedeutung: ${gleich.join(", ")}</div>` : "";
+  return { ...k, id: k.id + "|rev", front: k.bedeutung,
+    back: `<div class="vok-answer"><b>${k.begriff}</b></div>${auch}` };
+}
+
+// ==================== Fortschritt & Wiederholungsplan ====================
+const PROGRESS_KEY = "lernkarten-fortschritt", VERLAUF_KEY = "lernkarten-verlauf";
+// Je Karte: { box: 0 = neu, 1 = nicht gewusst, 2–5 = x-1 mal hintereinander gewusst, due, last, ok, fail, seen }
+let progress = store.get(PROGRESS_KEY, null);
+if (!progress) {
+  progress = {};
+  const alt = store.get("lernkarten-statistik", {});
+  Object.keys(alt).forEach(id => { progress[id] = { box: 0, ok: 0, fail: 0, seen: alt[id] }; });
+  store.set(PROGRESS_KEY, progress);
+}
+let verlauf = store.get(VERLAUF_KEY, {});  // { "2026-11-23": { ok, fail } }
+const saveProgress = () => store.set(PROGRESS_KEY, progress);
+const saveVerlauf = () => store.set(VERLAUF_KEY, verlauf);
+const prog = id => progress[id] || (progress[id] = { box: 0, ok: 0, fail: 0, seen: 0 });
+const boxOf = id => (progress[id] && progress[id].box) || 0;
+// Tage bis zur nächsten Abfrage je Fach (nicht gewusst → heute nochmal, dann 1, 3, 7, 21 Tage)
+const INTERVALL = [0, 0, 1, 3, 7, 21];
+const istFaellig = id => { const p = progress[id]; return !!p && p.box > 0 && (p.due || 0) <= Date.now(); };
+const istLernbar = id => boxOf(id) === 0 || istFaellig(id);
+
+const STUFEN = [
+  { name: "Neu",           badge: "neu",             cls: "s-neu",    info: "Noch nicht bewertet" },
+  { name: "Nicht gewusst", badge: "✗ nicht gewusst", cls: "s-falsch", info: "Zuletzt nicht gewusst – wird zuerst abgefragt" },
+  { name: "Am Lernen",     badge: "◐ am Lernen",     cls: "s-lernen", info: "1–2× hintereinander gewusst" },
+  { name: "Sitzt",         badge: "✓ sitzt",         cls: "s-sitzt",  info: "Mindestens 3× hintereinander gewusst" }
+];
+const stufe = b => b === 0 ? 0 : b === 1 ? 1 : b <= 3 ? 2 : 3;
+
+function markSeen(id) { prog(id).seen++; saveProgress(); }
+
+const undoStack = [];
+function rate(id, ok) {
+  const tag = tagKey(new Date());
+  undoStack.push({ id, prev: progress[id] ? { ...progress[id] } : null, tag, ok });
+  if (undoStack.length > 100) undoStack.shift();
+  const p = prog(id);
+  if (ok) { p.ok++; p.box = Math.min(5, Math.max(1, p.box) + 1); }
+  else { p.fail++; p.box = 1; }
+  p.due = heute0() + INTERVALL[p.box] * DAY;
+  p.last = Date.now();
+  const h = verlauf[tag] || (verlauf[tag] = { ok: 0, fail: 0 });
+  ok ? h.ok++ : h.fail++;
+  saveProgress(); saveVerlauf();
+}
+function undoRate() {
+  const u = undoStack.pop();
+  if (!u) return null;
+  if (u.prev) progress[u.id] = u.prev; else delete progress[u.id];
+  const h = verlauf[u.tag];
+  if (h) { u.ok ? h.ok = Math.max(0, h.ok - 1) : h.fail = Math.max(0, h.fail - 1); }
+  saveProgress(); saveVerlauf();
+  return u;
+}
+
+function lernserie() {
+  const aktiv = n => { const h = verlauf[tagKey(tagVor(n))]; return !!h && h.ok + h.fail > 0; };
+  let n = aktiv(0) ? 0 : 1, tage = 0;
+  while (aktiv(n)) { tage++; n++; }
+  return tage;
+}
+
+function wannText(id) {
+  const p = progress[id];
+  if (!p || !p.box) return "";
+  const d = Math.round(((p.due || 0) - heute0()) / DAY);
+  return d <= 0 ? "heute fällig" : d === 1 ? "wieder morgen" : `wieder in ${d} Tagen`;
+}
+
+// ==================== Dark Mode ====================
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("theme").textContent = t === "dark" ? "☀️" : "🌙";
+  document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#121418" : "#b3001b";
+}
+applyTheme(store.get("lernkarten-theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+$("theme").addEventListener("click", () => {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  store.set("lernkarten-theme", t);
+  applyTheme(t);
+});
+
+// ==================== Auswahl ====================
+baueKarten();
+let bereich = store.get("lernkarten-bereich", Object.keys(ALLE_BEREICHE)[0]);
+if (!ALLE_BEREICHE[bereich]) bereich = Object.keys(ALLE_BEREICHE)[0];
+let filter = store.get("lernkarten-thema", "all");
+let richtung = store.get("lernkarten-richtung", "normal");
+let suche = "";
+let order = KARTEN.map((_, i) => i);
+
+const tagFarbe = k => (ALLE_BEREICHE[k.bereich] || {}).farbe || "#555";
+const istVokabelBereich = b => !!(ALLE_BEREICHE[b] || {}).vokabeln;
+const anzeige = k => (richtung === "rev" && istVokabelBereich(k.bereich)) ? vokabelUmdrehen(k) : k;
+const suchtext = k => (stripHtml(k.front) + " " + stripHtml(k.back)).toLowerCase();
+
+function visibleCards() {
+  const q = suche.trim().toLowerCase();
+  return order.map(i => KARTEN[i])
+    .filter(k => k && k.bereich === bereich && (filter === "all" || k.thema === filter))
+    .map(anzeige)
+    .filter(k => !q || suchtext(k).includes(q));
+}
+
+function neuAufbauen() {
+  baueKarten();
+  order = KARTEN.map((_, i) => i);
+  if (!ALLE_BEREICHE[bereich]) bereich = Object.keys(ALLE_BEREICHE)[0];
+  renderMenus();
+  render();
+}
+
+// ==================== Übersicht (Raster) ====================
+const grid = $("grid");
+const option = (value, text) => { const o = document.createElement("option"); o.value = value; o.textContent = text; return o; };
+
+// Bereich- und Themen-Auswahl aus den Daten erzeugen (für Übersicht und Editor)
+function fuelleMenus(bSel, tSel) {
+  bSel.innerHTML = "";
+  Object.entries(ALLE_BEREICHE).forEach(([id, b]) =>
+    bSel.appendChild(option(id, `${b.icon} ${b.name} (${KARTEN.filter(k => k.bereich === id).length})`)));
+  bSel.value = bereich;
+  bSel.style.setProperty("--bereich", ALLE_BEREICHE[bereich].farbe);
+  const imBereich = KARTEN.filter(k => k.bereich === bereich);
+  const themen = [...new Set(imBereich.map(k => k.thema))];
+  if (filter !== "all" && !themen.includes(filter)) filter = "all";
+  tSel.innerHTML = "";
+  tSel.appendChild(option("all", `Alle Themen (${imBereich.length})`));
+  themen.forEach(t => tSel.appendChild(option(t, `${t} (${imBereich.filter(k => k.thema === t).length})`)));
+  tSel.value = filter;
+}
+const renderMenus = () => fuelleMenus($("bereichSel"), $("themaSel"));
+
+function badge(id) {
+  const b = boxOf(id), s = STUFEN[stufe(b)];
+  const wann = wannText(id);
+  const tip = (b === 0 ? "Noch nicht bewertet" : b === 1 ? "Zuletzt nicht gewusst" : `${b - 1}× hintereinander gewusst`) + (wann ? " · " + wann : "");
+  return `<span class="badge ${s.cls}" title="${tip}">${istFaellig(id) && b > 1 ? "📅 " : ""}${s.badge}</span>`;
+}
+
+function renderSummary() {
+  const vis = visibleCards();
+  const n = [0, 0, 0, 0];
+  vis.forEach(k => n[stufe(boxOf(k.id))]++);
+  const total = vis.length || 1;
+  const faellig = vis.filter(k => istFaellig(k.id)).length;
+  const serie = lernserie();
+  const legend = STUFEN.map((s, i) => n[i] ? `<span title="${s.info}"><i class="${s.cls}"></i>${s.name}: ${n[i]}</span>` : "").join("");
+  $("summary").innerHTML =
+    `<div class="due-line">📅 Heute fällig: <b>${faellig}</b> · Neu: <b>${n[0]}</b>${serie ? ` · 🔥 ${serie} ${serie === 1 ? "Tag" : "Tage"} in Folge` : ""}</div>
+     ✓ Sitzt: <b>${n[3]} von ${vis.length}</b> Karten (${Math.round(n[3] / total * 100)} %)
+     <div class="boxbar">${[1, 2, 3, 0].map(i => n[i] ? `<span class="${STUFEN[i].cls}" style="width:${n[i] / total * 100}%" title="${STUFEN[i].name}: ${n[i]}"></span>` : "").join("")}</div>
+     <div class="legend">${legend}</div>`;
+  $("learnStart").textContent = `▶ Lernen (${vis.filter(k => istLernbar(k.id)).length})`;
+}
+
+const bildHtml = (k, seite, cls = "card-img") =>
+  k.bild && (k.bildSeite || "back") === seite ? `<img class="${cls}" src="${esc(k.bild)}" alt="" loading="lazy">` : "";
+
+function faceHtml(k, withRating) {
+  const tag = `<span class="tag" style="background:${tagFarbe(k)}">${esc(k.thema)}</span>`;
+  const rating = withRating ? `<div class="rate"><button class="no" data-ok="0">❌ Nicht gewusst</button><button class="yes" data-ok="1">✅ Gewusst</button></div>` : "";
+  return `<div class="inner">
+      <div class="face front">${tag}${badge(k.id)}<div>${bildHtml(k, "front")}${k.front}</div></div>
+      <div class="face back">${tag}${badge(k.id)}<div>${k.back}${bildHtml(k, "back")}</div>${rating}</div>
+    </div>`;
+}
+
+function render() {
+  document.body.classList.toggle("has-vokabeln", istVokabelBereich(bereich));
+  grid.innerHTML = "";
+  const visible = visibleCards();
+  if (!visible.length) grid.innerHTML = `<div class="empty-msg">Keine Karten gefunden.${KARTEN.some(k => k.bereich === bereich) ? "" : "<br>Neue Karten anlegen: ⋯ Mehr → ✏️ Karten bearbeiten"}</div>`;
+  visible.forEach(k => {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = faceHtml(k, true);
+    el.addEventListener("click", e => {
+      const btn = e.target.closest("[data-ok]");
+      if (btn) {
+        const ok = btn.dataset.ok === "1";
+        rate(k.id, ok);
+        el.querySelectorAll(".badge").forEach(s => s.outerHTML = badge(k.id));
+        el.classList.remove("flipped");
+        renderSummary();
+        toast(ok ? "✅ Als gewusst gespeichert" : "❌ Als nicht gewusst gespeichert", "Rückgängig", () => { undoRate(); render(); });
+        return;
+      }
+      el.classList.toggle("flipped");
+      if (el.classList.contains("flipped")) markSeen(k.id);
+    });
+    grid.appendChild(el);
+  });
+  renderSummary();
+}
+
+function setBereich(b, thema = "all") {
+  bereich = b;
+  filter = thema;
+  renderMenus();
+  store.set("lernkarten-bereich", bereich);
+  store.set("lernkarten-thema", filter);
+  render();
+}
+$("bereichSel").addEventListener("change", e => setBereich(e.target.value));
+$("themaSel").addEventListener("change", e => setBereich(bereich, e.target.value));
+
+document.querySelectorAll("[data-richtung]").forEach(b => {
+  b.classList.toggle("active", b.dataset.richtung === richtung);
+  b.addEventListener("click", () => {
+    richtung = b.dataset.richtung;
+    store.set("lernkarten-richtung", richtung);
+    document.querySelectorAll("[data-richtung]").forEach(x => x.classList.toggle("active", x === b));
+    render();
+  });
+});
+
+$("search").addEventListener("input", e => { suche = e.target.value; render(); });
+$("shuffle").addEventListener("click", () => {
+  const rank = b => b === 1 ? 0 : b === 0 ? 1 : b;
+  order = mischen(KARTEN.map((k, i) => ({ i, r: rank(boxOf(k.id)) }))).sort((a, b) => a.r - b.r).map(x => x.i);
+  render();
+});
+$("reset").addEventListener("click", () => document.querySelectorAll(".card.flipped").forEach(c => c.classList.remove("flipped")));
+$("statsReset").addEventListener("click", () => {
+  if (!confirm("Lernfortschritt und Statistik für ALLE Karten löschen?\n(Tipp: vorher „Sicherung speichern“)")) return;
+  progress = {}; verlauf = {}; undoStack.length = 0;
+  saveProgress(); saveVerlauf();
+  render();
+});
+
+// „Mehr“-Menü schließen nach Auswahl oder Klick daneben
+const moreMenu = document.querySelector("details.more");
+moreMenu.addEventListener("click", e => { if (e.target.closest(".menu button")) moreMenu.open = false; });
+document.addEventListener("click", e => { if (!moreMenu.contains(e.target)) moreMenu.open = false; });
+
+// ==================== Ansichten wechseln ====================
+function zeigeAnsicht(v) {
+  document.body.dataset.view = v;
+  hideToast();
+  window.scrollTo(0, 0);
+}
+function zurUebersicht() {
+  session = null;
+  zeigeAnsicht("browse");
+  $("printOut").innerHTML = "";
+  renderMenus();
+  render();
+}
+document.querySelectorAll(".back-btn").forEach(b => b.addEventListener("click", zurUebersicht));
+$("home").addEventListener("click", zurUebersicht);
+
+// ==================== Lernmodus ====================
+const learnBody = $("learnBody");
+let queue = [], session = null;
+
+// Reihenfolge: nicht gewusst → fällig (unsicherste zuerst) → neu; innerhalb zufällig
+function lernReihenfolge(cards) {
+  const rank = k => { const b = boxOf(k.id); return b === 1 ? 0 : b === 0 ? 9 : b; };
+  return mischen(cards).sort((a, b) => rank(a) - rank(b));
+}
+
+function startLearning(cards) {
+  if (!cards.length) { toast("Keine Karten in der aktuellen Auswahl."); return; }
+  queue = lernReihenfolge(cards);
+  session = { total: queue.length, ok: 0, fail: 0, wrong: new Map(), flipped: false, done: new Set(), schritte: [], quelle: cards };
+  zeigeAnsicht("learn");
+  showLearnCard();
+}
+
+function updateProgress() {
+  const done = session.done.size;
+  $("learnProgress").innerHTML = `${Math.min(done + 1, session.total)} / ${session.total} &nbsp; ✅ ${session.ok} &nbsp; ❌ ${session.fail}`;
+  $("learnBar").style.width = (done / session.total * 100) + "%";
+  $("learnUndo").disabled = !session.schritte.length;
+}
+
+function showLearnCard(umgedreht = false) {
+  updateProgress();
+  if (!queue.length) return showLearnDone();
+  const k = queue[0];
+  session.flipped = false;
+  learnBody.innerHTML = `<div class="card" id="learnCard">${faceHtml(k, false)}</div>
+    <div class="learn-actions" id="learnActions"><button id="flipBtn">Antwort zeigen</button></div>`;
+  const card = $("learnCard");
+  card.addEventListener("click", () => {
+    if (Date.now() - (card.gewischtUm || 0) < 400) return;
+    flipLearn();
+  });
+  $("flipBtn").addEventListener("click", () => flipLearn());
+  wischenAktivieren(card);
+  if (umgedreht) flipLearn(true);
+}
+
+function flipLearn(ohneZaehlen = false) {
+  if (!session || !queue.length) return;
+  const card = $("learnCard");
+  if (!session.flipped) {
+    session.flipped = true;
+    card.classList.add("flipped");
+    if (!ohneZaehlen) markSeen(queue[0].id);
+    $("learnActions").innerHTML = `<button class="no" id="noBtn">❌ Nicht gewusst</button><button class="yes" id="yesBtn">✅ Gewusst</button>`;
+    $("noBtn").addEventListener("click", () => answerLearn(false));
+    $("yesBtn").addEventListener("click", () => answerLearn(true));
+  } else {
+    card.classList.toggle("flipped");
+  }
+}
+
+function answerLearn(ok) {
+  if (!session || !session.flipped) return;
+  session.schritte.push({ queue: queue.slice(), ok: session.ok, fail: session.fail, wrong: new Map(session.wrong), done: new Set(session.done) });
+  const k = queue.shift();
+  rate(k.id, ok);
+  if (ok) {
+    session.ok++;
+    session.done.add(k.id);
+  } else {
+    session.fail++;
+    session.wrong.set(k.id, k);
+    // Falsche Karte kommt in dieser Runde nach ein paar Karten noch einmal
+    queue.splice(Math.min(3, queue.length), 0, k);
+  }
+  showLearnCard();
+}
+
+function undoLearn() {
+  const s = session && session.schritte.pop();
+  if (!s) return;
+  undoRate();
+  queue = s.queue; session.ok = s.ok; session.fail = s.fail; session.wrong = s.wrong; session.done = s.done;
+  showLearnCard(true);
+  toast("↶ Letzte Bewertung zurückgenommen", null, null, 2000);
+}
+$("learnUndo").addEventListener("click", undoLearn);
+
+// Wischen auf dem Handy: rechts = gewusst, links = nicht gewusst (erst nach dem Umdrehen)
+function wischenAktivieren(card) {
+  let x0 = null, y0 = 0, dx = 0, waagrecht = null;
+  card.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; waagrecht = null; }, { passive: true });
+  card.addEventListener("touchmove", e => {
+    if (x0 === null) return;
+    dx = e.touches[0].clientX - x0;
+    const dy = e.touches[0].clientY - y0;
+    if (waagrecht === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) waagrecht = Math.abs(dx) > Math.abs(dy);
+    if (!waagrecht) return;
+    card.classList.add("dragging");
+    card.style.transform = `translateX(${dx}px) rotate(${dx / 25}deg)`;
+    card.dataset.swipe = !session.flipped ? "" : dx > 60 ? "✅ Gewusst" : dx < -60 ? "❌ Nicht gewusst" : "";
+  }, { passive: true });
+  card.addEventListener("touchend", () => {
+    if (x0 === null) return;
+    card.classList.remove("dragging");
+    const weit = waagrecht && Math.abs(dx) > 90;
+    if (waagrecht && Math.abs(dx) > 10) card.gewischtUm = Date.now();
+    x0 = null;
+    if (weit && session.flipped) {
+      card.style.transform = `translateX(${dx > 0 ? 120 : -120}%) rotate(${dx > 0 ? 12 : -12}deg)`;
+      setTimeout(() => answerLearn(dx > 0), 160);
+    } else {
+      card.style.transform = "";
+      card.dataset.swipe = "";
+      if (weit) toast("Erst antippen und die Antwort ansehen 🙂", null, null, 2000);
+    }
+  });
+}
+
+function showLearnDone() {
+  const wrong = [...session.wrong.values()];
+  $("learnBar").style.width = "100%";
+  const nochFaellig = visibleCards().filter(k => istLernbar(k.id)).length;
+  learnBody.innerHTML = `<div class="done">
+      <h2>🎉 Runde geschafft!</h2>
+      <p>${session.total} Karten · ✅ ${session.ok}× gewusst · ❌ ${session.fail}× nicht gewusst</p>
+      ${wrong.length ? `<p>Diese Karten waren schwierig:<br><b>${wrong.map(k => esc(stripHtml(k.front))).join(" · ")}</b></p>` : "<p>Alles auf Anhieb gewusst – super!</p>"}
+      <p class="hint-small">${nochFaellig ? `Noch ${nochFaellig} Karten fällig oder neu.` : "Für heute ist hier alles erledigt. Gewusste Karten kommen nach Plan wieder (1, 3, 7, 21 Tage)."}</p>
+      <div class="controls">
+        ${wrong.length ? `<button id="againWrong" class="no">Schwierige nochmal (${wrong.length})</button>` : ""}
+        ${nochFaellig ? `<button id="againDue" class="primary">Weiterlernen (${nochFaellig})</button>` : ""}
+        <button id="doneStats">📊 Statistik</button>
+        <button id="doneExit">Zur Übersicht</button>
+      </div>
+    </div>`;
+  if (wrong.length) $("againWrong").addEventListener("click", () => startLearning(wrong));
+  if (nochFaellig) $("againDue").addEventListener("click", () => startLearning(visibleCards().filter(k => istLernbar(k.id))));
+  $("doneStats").addEventListener("click", oeffneStatistik);
+  $("doneExit").addEventListener("click", zurUebersicht);
+}
+
+$("learnStart").addEventListener("click", () => {
+  const vis = visibleCards();
+  const lernbar = vis.filter(k => istLernbar(k.id));
+  if (lernbar.length) startLearning(lernbar);
+  else if (vis.length && confirm(`Heute ist hier nichts fällig 🎉\nTrotzdem alle ${vis.length} Karten wiederholen?`)) startLearning(vis);
+});
+$("learnAll").addEventListener("click", () => startLearning(visibleCards()));
+$("learnExit").addEventListener("click", zurUebersicht);
+
+// Tastatur (PC)
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.target.matches("input, textarea, select") || document.querySelector("dialog[open]")) return;
+  const view = document.body.dataset.view;
+  if (e.key === "Escape" && view !== "browse") { zurUebersicht(); return; }
+  if (view !== "learn" || !session) return;
+  if (e.key === "z" || e.key === "Z" || e.key === "Backspace") { e.preventDefault(); undoLearn(); return; }
+  if (!queue.length) return;
+  if (e.key === " " || e.key === "Enter") { e.preventDefault(); flipLearn(); }
+  else if (session.flipped && (e.key === "1" || e.key === "ArrowLeft")) answerLearn(false);
+  else if (session.flipped && (e.key === "2" || e.key === "ArrowRight")) answerLearn(true);
+});
+
+// ==================== Statistik ====================
+function stufenBalken(cards) {
+  const n = [0, 0, 0, 0];
+  cards.forEach(k => n[stufe(boxOf(k.id))]++);
+  const total = cards.length || 1;
+  return `<div class="boxbar">${[1, 2, 3, 0].map(i => n[i] ? `<span class="${STUFEN[i].cls}" style="width:${n[i] / total * 100}%" title="${STUFEN[i].name}: ${n[i]}"></span>` : "").join("")}</div>`;
+}
+
+function oeffneStatistik() {
+  zeigeAnsicht("stats");
+  const heute = verlauf[tagKey(new Date())] || { ok: 0, fail: 0 };
+  let sumOk = 0, sumFail = 0, ok7 = 0, fail7 = 0;
+  Object.values(verlauf).forEach(h => { sumOk += h.ok; sumFail += h.fail; });
+  for (let n = 0; n < 7; n++) { const h = verlauf[tagKey(tagVor(n))]; if (h) { ok7 += h.ok; fail7 += h.fail; } }
+  const sitzt = KARTEN.filter(k => stufe(boxOf(k.id)) === 3).length;
+  const faellig = KARTEN.filter(k => istFaellig(k.id)).length;
+  const serie = lernserie();
+  const kachel = (wert, text) => `<div class="kachel"><b>${wert}</b><span>${text}</span></div>`;
+  $("statKacheln").innerHTML =
+    kachel(`🔥 ${serie}`, serie === 1 ? "Tag in Folge gelernt" : "Tage in Folge gelernt") +
+    kachel(heute.ok + heute.fail, "Karten heute bewertet") +
+    kachel(ok7 + fail7 ? Math.round(ok7 / (ok7 + fail7) * 100) + " %" : "–", "gewusst (letzte 7 Tage)") +
+    kachel(`${sitzt}/${KARTEN.length}`, "Karten sitzen") +
+    kachel(faellig, "heute fällig") +
+    kachel(sumOk + sumFail, "Bewertungen insgesamt");
+
+  const tage = [...Array(14)].map((_, i) => { const d = tagVor(13 - i); return { d, h: verlauf[tagKey(d)] || { ok: 0, fail: 0 } }; });
+  const max = Math.max(5, ...tage.map(t => t.h.ok + t.h.fail));
+  $("statChart").innerHTML =
+    `<div class="chart">${tage.map(t => `<div class="day" title="${t.d.toLocaleDateString("de-DE")}: ✅ ${t.h.ok} · ❌ ${t.h.fail}">
+        <i class="fail" style="height:${t.h.fail / max * 100}%"></i><i class="ok" style="height:${t.h.ok / max * 100}%"></i></div>`).join("")}</div>
+     <div class="chart-labels">${tage.map((t, i) => `<span class="${i === 13 ? "heute" : ""}">${i === 13 ? "heute" : t.d.getDate() + "."}</span>`).join("")}</div>`;
+
+  $("statBereiche").innerHTML = Object.entries(ALLE_BEREICHE).map(([id, b]) => {
+    const karten = KARTEN.filter(k => k.bereich === id);
+    const s = karten.filter(k => stufe(boxOf(k.id)) === 3).length;
+    const f = karten.filter(k => istLernbar(k.id)).length;
+    return `<div class="row"><div class="name">${b.icon} ${esc(b.name)}<small>${s} von ${karten.length} sitzen · ${f} zu lernen</small></div>
+      ${stufenBalken(karten)}<button data-lerne-bereich="${esc(id)}" ${f ? "" : "disabled"}>▶ ${f}</button></div>`;
+  }).join("");
+
+  // Fehlerquote je Thema (beide Vokabel-Richtungen zusammen), ab 3 Bewertungen
+  const themen = new Map();
+  KARTEN.forEach(k => {
+    const key = k.bereich + "\u0000" + k.thema;
+    const t = themen.get(key) || { bereich: k.bereich, thema: k.thema, ok: 0, fail: 0 };
+    [progress[k.id], progress[k.id + "|rev"]].forEach(p => { if (p) { t.ok += p.ok || 0; t.fail += p.fail || 0; } });
+    themen.set(key, t);
+  });
+  const schwach = [...themen.values()].filter(t => t.ok + t.fail >= 3 && t.fail > 0)
+    .map(t => ({ ...t, quote: t.fail / (t.ok + t.fail) })).sort((a, b) => b.quote - a.quote).slice(0, 6);
+  $("statSchwach").innerHTML = schwach.length ? schwach.map(t => `<div class="row">
+      <div class="name">${esc(t.thema)}<small>${ALLE_BEREICHE[t.bereich].icon} ${esc(ALLE_BEREICHE[t.bereich].name)}</small></div>
+      <div class="boxbar"><span class="s-falsch" style="width:${t.quote * 100}%"></span></div>
+      <div class="wert">${Math.round(t.quote * 100)} % falsch</div>
+      <button data-ueben="${esc(t.bereich)}" data-thema="${esc(t.thema)}">Üben</button></div>`).join("")
+    : `<p class="hint-small">Noch zu wenige Bewertungen – nach ein paar Lernrunden siehst du hier, welche Themen dir am schwersten fallen.</p>`;
+}
+$("statsOpen").addEventListener("click", oeffneStatistik);
+$("statsView").addEventListener("click", e => {
+  const b = e.target.closest("[data-lerne-bereich]");
+  const u = e.target.closest("[data-ueben]");
+  if (b) { setBereich(b.dataset.lerneBereich); startLearning(visibleCards().filter(k => istLernbar(k.id))); }
+  if (u) { setBereich(u.dataset.ueben, u.dataset.thema); startLearning(visibleCards()); }
+});
+
+// ==================== Sicherung speichern / laden ====================
+$("exportBtn").addEventListener("click", () => {
+  const daten = { app: "lernkarten", version: 2, exportiert: new Date().toISOString(), progress, verlauf, eigene };
+  download(`lernkarten-sicherung-${tagKey(new Date())}.json`, JSON.stringify(daten), "application/json");
+  toast("💾 Sicherung gespeichert (Ordner „Downloads“)");
+});
+$("importBtn").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  try {
+    const d = JSON.parse(await file.text());
+    if (!d || d.app !== "lernkarten") throw new Error("keine Lernkarten-Sicherung");
+    const datum = d.exportiert ? new Date(d.exportiert).toLocaleString("de-DE") : "unbekannt";
+    if (!confirm(`Sicherung vom ${datum} laden?\n\nSie wird mit dem aktuellen Stand zusammengeführt – pro Karte gilt jeweils der neuere Lernstand.`)) return;
+    // Pro Karte gewinnt der zuletzt bewertete Stand
+    Object.entries(d.progress || {}).forEach(([id, p]) => {
+      const a = progress[id];
+      if (!a || (p.last || 0) > (a.last || 0) || (!a.last && !p.last && (p.ok + p.fail) > (a.ok + a.fail))) progress[id] = p;
+    });
+    Object.entries(d.verlauf || {}).forEach(([tag, h]) => {
+      const a = verlauf[tag] || { ok: 0, fail: 0 };
+      verlauf[tag] = { ok: Math.max(a.ok, h.ok || 0), fail: Math.max(a.fail, h.fail || 0) };
+    });
+    if (d.eigene) {
+      Object.assign(eigene.bereiche, d.eigene.bereiche || {});
+      Object.entries(d.eigene.karten || {}).forEach(([id, k]) => {
+        const a = eigene.karten[id];
+        if (!a || (k.geaendertAm || 0) >= (a.geaendertAm || 0)) eigene.karten[id] = k;
+      });
+      eigene.geloescht = [...new Set([...eigene.geloescht, ...(d.eigene.geloescht || [])])];
+      saveEigene();
+    }
+    saveProgress(); saveVerlauf();
+    neuAufbauen();
+    toast("📂 Sicherung geladen");
+  } catch (err) {
+    alert("Die Datei konnte nicht geladen werden: " + err.message);
+  }
+});
+
+// ==================== Karten bearbeiten ====================
+let dlgId = null, dlgBereich = null, dlgBild = null, dlgOrig = null;
+
+// Einfache Textformatierung ⇄ HTML: „- “ Aufzählung, „1. “ nummeriert, **fett**
+function textZuHtml(t) {
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  let html = "", liste = null, warText = false;
+  const schliessen = () => { if (liste) { html += `</${liste}>`; liste = null; } };
+  t.replace(/\r/g, "").split("\n").forEach(zeile => {
+    const ul = zeile.match(/^\s*[-•]\s+(.*)/), ol = zeile.match(/^\s*\d+[.)]\s+(.*)/);
+    if (ul || ol) {
+      const typ = ul ? "ul" : "ol";
+      if (liste !== typ) { schliessen(); html += `<${typ}>`; liste = typ; }
+      html += `<li>${inline((ul || ol)[1])}</li>`;
+      warText = false;
+    } else if (zeile.trim()) {
+      schliessen();
+      html += (warText ? "<br>" : "") + inline(zeile.trim());
+      warText = true;
+    }
+  });
+  schliessen();
+  return html;
+}
+function htmlZuText(h) {
+  const d = document.createElement("div");
+  d.innerHTML = h;
+  d.querySelectorAll(".tip").forEach(x => x.remove());
+  const inline = n => n.nodeType === 3 ? n.textContent.replace(/\s+/g, " ")
+    : n.tagName === "BR" ? "\n"
+    : (n.tagName === "B" || n.tagName === "STRONG") ? `**${[...n.childNodes].map(inline).join("")}**`
+    : [...n.childNodes].map(inline).join("");
+  const zeilen = [];
+  let akt = "";
+  const flush = () => { akt.split("\n").forEach(z => { if (z.trim()) zeilen.push(z.trim()); }); akt = ""; };
+  const walk = n => {
+    if (n.nodeType === 1 && (n.tagName === "UL" || n.tagName === "OL")) {
+      flush();
+      [...n.children].forEach((li, i) => zeilen.push((n.tagName === "OL" ? `${i + 1}. ` : "- ") + inline(li).replace(/\s+/g, " ").trim()));
+    } else if (n.nodeType === 1 && (n.tagName === "DIV" || n.tagName === "P")) {
+      flush(); [...n.childNodes].forEach(walk); flush();
+    } else akt += inline(n);
+  };
+  [...d.childNodes].forEach(walk);
+  flush();
+  return zeilen.join("\n");
+}
+const tipAus = h => { const d = document.createElement("div"); d.innerHTML = h; const t = d.querySelector(".tip"); return t ? t.textContent.trim() : ""; };
+
+// Bilder verkleinern, damit sie in den Browser-Speicher passen
+function bildVerkleinern(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const f = Math.min(1, 900 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * f); c.height = Math.round(img.height * f);
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Bild konnte nicht gelesen werden")); };
+    img.src = url;
+  });
+}
+
+function oeffneEditor() { zeigeAnsicht("edit"); renderEdit(); }
+$("editOpen").addEventListener("click", oeffneEditor);
+
+function renderEdit() {
+  fuelleMenus($("editBereich"), $("editThema"));
+  const b = ALLE_BEREICHE[bereich];
+  const q = $("editSuche").value.trim().toLowerCase();
+  const karten = KARTEN.filter(k => k.bereich === bereich && (filter === "all" || k.thema === filter) && (!q || suchtext(k).includes(q)));
+  $("editList").innerHTML = karten.length ? karten.map(k => `<li>
+      <div class="txt"><small>${esc(k.thema)}${k.eigen ? '<i class="chip neu">neu</i>' : k.geaendert ? '<i class="chip geaendert">geändert</i>' : ""}</small>
+        <div>${k.bild ? "🖼 " : ""}${esc(stripHtml(k.front))}</div></div>
+      ${k.geaendert ? `<button data-revert="${esc(k.id)}" title="Änderung verwerfen">↺</button>` : ""}
+      <button data-edit="${esc(k.id)}" title="Bearbeiten">✏️</button>
+      <button data-del="${esc(k.id)}" title="Löschen">🗑</button></li>`).join("")
+    : `<li class="hint-small">Keine Karten – lege mit „＋ Neue Karte“ die erste an.</li>`;
+
+  const geloescht = eigene.geloescht.length;
+  $("editGeloeschte").style.display = geloescht ? "" : "none";
+  $("editGeloeschte").textContent = `↺ Gelöschte wiederherstellen (${geloescht})`;
+  $("editBereichWeg").style.display = b.eigen ? "" : "none";
+
+  const anzahl = Object.keys(eigene.karten).length + geloescht + Object.keys(eigene.bereiche).length;
+  $("editNotice").innerHTML = anzahl ? `<div class="notice">
+      <b>${anzahl} Änderung${anzahl === 1 ? "" : "en"}</b> sind bisher nur in diesem Browser gespeichert.
+      Damit sie dauerhaft gelten (und aufs Handy kommen):
+      <button id="editDownload" style="margin:6px 0;display:block">⬇ karten-daten.js herunterladen</button>
+      und die alte Datei im Lern-Ordner damit ersetzen. Danach räumt sich die Liste von selbst auf.</div>`
+    : `<p class="hint-small" style="margin-top:0">Änderungen werden sofort übernommen und im Browser gespeichert. Der Lernfortschritt einer Karte bleibt beim Bearbeiten erhalten.</p>`;
+  if (anzahl) $("editDownload").addEventListener("click", dateiErzeugen);
+}
+$("editBereich").addEventListener("change", e => { setBereich(e.target.value); renderEdit(); });
+$("editThema").addEventListener("change", e => { setBereich(bereich, e.target.value); renderEdit(); });
+$("editSuche").addEventListener("input", renderEdit);
+
+$("editList").addEventListener("click", e => {
+  const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), rev = e.target.closest("[data-revert]");
+  if (ed) oeffneKarte(KARTEN.find(k => k.id === ed.dataset.edit));
+  if (rev && confirm("Änderung verwerfen und die Originalkarte wiederherstellen?")) {
+    delete eigene.karten[rev.dataset.revert]; saveEigene(); neuAufbauen(); renderEdit();
+  }
+  if (del) {
+    const k = KARTEN.find(x => x.id === del.dataset.del);
+    if (!k || !confirm(`Karte löschen?\n\n„${stripHtml(k.front)}“`)) return;
+    if (k.eigen) delete eigene.karten[k.id];
+    else { delete eigene.karten[k.id]; eigene.geloescht.push(k.id); }
+    saveEigene(); neuAufbauen(); renderEdit();
+    toast("🗑 Karte gelöscht");
+  }
+});
+$("editGeloeschte").addEventListener("click", () => {
+  if (!confirm(`${eigene.geloescht.length} gelöschte Karte(n) wiederherstellen?`)) return;
+  eigene.geloescht = []; saveEigene(); neuAufbauen(); renderEdit();
+});
+$("editBereichWeg").addEventListener("click", () => {
+  const anzahl = KARTEN.filter(k => k.bereich === bereich).length;
+  if (!confirm(`Bereich „${ALLE_BEREICHE[bereich].name}“${anzahl ? ` mit ${anzahl} Karten` : ""} löschen?`)) return;
+  Object.keys(eigene.karten).forEach(id => { if (eigene.karten[id].bereich === bereich) delete eigene.karten[id]; });
+  delete eigene.bereiche[bereich];
+  saveEigene();
+  bereich = Object.keys(BEREICHE)[0];
+  neuAufbauen(); renderEdit();
+});
+
+function oeffneKarte(k) {
+  dlgId = k ? k.id : null;
+  dlgBereich = k ? k.bereich : bereich;
+  dlgBild = k ? k.bild || null : null;
+  const vok = istVokabelBereich(dlgBereich);
+  $("karteTitel").textContent = (k ? "Karte bearbeiten" : "Neue Karte") + " – " + ALLE_BEREICHE[dlgBereich].name;
+  $("fFrage").style.display = vok ? "none" : "contents";
+  $("fVok").style.display = vok ? "contents" : "none";
+  $("themenListe").innerHTML = [...new Set(KARTEN.filter(x => x.bereich === dlgBereich).map(x => x.thema))].map(t => `<option value="${esc(t)}">`).join("");
+  $("fThema").value = k ? k.thema : (filter !== "all" ? filter : "");
+  dlgOrig = { front: k && !vok ? htmlZuText(k.front) : "", back: k && !vok ? htmlZuText(k.back) : "", tip: k && !vok ? tipAus(k.back) : "" };
+  $("fFront").value = dlgOrig.front;
+  $("fBack").value = dlgOrig.back;
+  $("fTip").value = dlgOrig.tip;
+  $("fBegriff").value = k && vok ? stripHtml(k.begriff) : "";
+  $("fBedeutung").value = k && vok ? String(k.bedeutung).replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "") : "";
+  $("fBildSeite").value = k && k.bildSeite ? k.bildSeite : "back";
+  $("fBild").value = "";
+  zeigeBildVorschau();
+  $("karteDlg").showModal();
+  (vok ? $("fBegriff") : $("fFront")).focus();
+}
+function zeigeBildVorschau() {
+  $("fBildVorschau").innerHTML = dlgBild ? `<img src="${esc(dlgBild)}" alt="">` : "";
+  $("fBildWeg").style.display = dlgBild ? "" : "none";
+  $("fBildSeiteLbl").style.display = dlgBild ? "" : "none";
+}
+$("fBild").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { dlgBild = await bildVerkleinern(f); zeigeBildVorschau(); } catch (err) { alert(err.message); }
+});
+$("fBildWeg").addEventListener("click", () => { dlgBild = null; $("fBild").value = ""; zeigeBildVorschau(); });
+$("fAbbrechen").addEventListener("click", () => $("karteDlg").close());
+$("editNeu").addEventListener("click", () => oeffneKarte(null));
+
+$("fSpeichern").addEventListener("click", () => {
+  const thema = $("fThema").value.trim();
+  if (!thema) { alert("Bitte ein Thema angeben."); return; }
+  const alt = dlgId ? KARTEN.find(k => k.id === dlgId) : null;
+  const k = { bereich: dlgBereich, thema, geaendertAm: Date.now() };
+  if (istVokabelBereich(dlgBereich)) {
+    const begriff = $("fBegriff").value.trim(), bedeutung = $("fBedeutung").value.trim();
+    if (!begriff || !bedeutung) { alert("Bitte Begriff und Bedeutung ausfüllen."); return; }
+    k.begriff = esc(begriff);
+    k.bedeutung = bedeutung.split("\n").map(z => esc(z.trim())).filter(Boolean).join("<br>");
+  } else {
+    const front = $("fFront").value.trim(), back = $("fBack").value.trim(), tip = $("fTip").value.trim();
+    if (!front || !back) { alert("Bitte Vorder- und Rückseite ausfüllen."); return; }
+    // Unveränderte Felder behalten ihr ursprüngliches HTML (z. B. Sonderformatierungen)
+    k.front = alt && front === dlgOrig.front ? alt.front : textZuHtml(front);
+    k.back = alt && back === dlgOrig.back && tip === dlgOrig.tip ? alt.back
+      : textZuHtml(back) + (tip ? `<div class="tip">${esc(tip)}</div>` : "");
+  }
+  if (dlgBild) { k.bild = dlgBild; k.bildSeite = $("fBildSeite").value; }
+  const id = dlgId || "eigen|" + Date.now().toString(36);
+  eigene.karten[id] = k;
+  saveEigene();
+  $("karteDlg").close();
+  neuAufbauen();
+  renderEdit();
+  toast(dlgId ? "✏️ Karte gespeichert" : "＋ Karte angelegt");
+});
+
+$("editNeuerBereich").addEventListener("click", () => { $("bName").value = ""; $("bereichDlg").showModal(); $("bName").focus(); });
+$("bAbbrechen").addEventListener("click", () => $("bereichDlg").close());
+$("bSpeichern").addEventListener("click", () => {
+  const name = $("bName").value.trim();
+  if (!name) { alert("Bitte einen Namen angeben."); return; }
+  let id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "bereich";
+  while (ALLE_BEREICHE[id]) id += "-2";
+  eigene.bereiche[id] = { name, icon: $("bIcon").value.trim() || "📘", farbe: $("bFarbe").value, vokabeln: $("bTyp").value === "vokabeln" };
+  saveEigene();
+  $("bereichDlg").close();
+  bereich = id; filter = "all";
+  store.set("lernkarten-bereich", id);
+  neuAufbauen();
+  renderEdit();
+  oeffneKarte(null);
+});
+
+// karten-daten.js mit allen Änderungen neu erzeugen
+function dateiErzeugen() {
+  const js = v => JSON.stringify(v);
+  const zusatz = k => (k.id !== abgeleiteteId(k) ? `, key: ${js(k.id)}` : "") + (k.bild ? `, bild: ${js(k.bild)}, bildSeite: ${js(k.bildSeite || "back")}` : "");
+  let out = `// Kartendaten für Lernkarten.html – erzeugt am ${new Date().toLocaleString("de-DE")} über „Karten bearbeiten“.
+// Neue Karten hier eintragen oder in der Seite unter „⋯ Mehr → Karten bearbeiten“.
+//   karten:   [{ thema, front, back }, …]        – Frage/Antwort-Karten
+//   vokabeln: [[Begriff, Bedeutung, Thema], …]   – Vokabeln (mit Richtungswechsel Latein ⇄ Deutsch)
+// Optional je Karte: bild: "bilder/datei.jpg", bildSeite: "front" (Frage) oder "back" (Antwort)
+// key: hält den Lernfortschritt fest, wenn sich der Text der Vorderseite geändert hat – nicht entfernen.
+
+const BEREICHE = {\n`;
+  Object.entries(ALLE_BEREICHE).forEach(([id, b]) => {
+    const karten = KARTEN.filter(k => k.bereich === id);
+    const zeilen = karten.map(k => b.vokabeln
+      ? (zusatz(k) ? `{ begriff: ${js(k.begriff)}, bedeutung: ${js(k.bedeutung)}, thema: ${js(k.thema)}${zusatz(k)} }` : js([k.begriff, k.bedeutung, k.thema]))
+      : `{ thema: ${js(k.thema)}, front: ${js(k.front)},\n      back: ${js(k.back)}${zusatz(k)} }`);
+    out += `  ${js(id)}: {\n    name: ${js(b.name)}, icon: ${js(b.icon)}, farbe: ${js(b.farbe)},\n    ${b.vokabeln ? "vokabeln" : "karten"}: [\n      ${zeilen.join(",\n      ")}\n    ]\n  },\n`;
+  });
+  out = out.replace(/,\n$/, "\n") + "};\n";
+  download("karten-daten.js", out, "text/javascript");
+  toast("⬇ karten-daten.js gespeichert – jetzt im Lern-Ordner die alte Datei ersetzen", null, null, 8000);
+}
+
+// ==================== Druckansicht ====================
+let druckUmfang = "auswahl", autoPrint = false;
+
+function printCards() {
+  const list = druckUmfang === "alle" ? KARTEN.map(anzeige) : visibleCards();
+  return list.map(k => ({ ...k, q: ALLE_BEREICHE[k.bereich].name,
+    front: `${bildHtml(k, "front", "p-img")}${k.front}<div class="p-sub">${esc(k.thema)}</div>`,
+    back: k.back + bildHtml(k, "back", "p-img") }));
+}
+
+function renderPrint() {
+  const selected = printCards();
+  const teile = druckUmfang === "alle" ? ["Alle Lernkarten"] : [ALLE_BEREICHE[bereich].name];
+  if (druckUmfang !== "alle" && filter !== "all") teile.push(filter);
+  if (druckUmfang !== "alle" && suche.trim()) teile.push(`Suche „${suche.trim()}“`);
+  if (richtung === "rev" && (druckUmfang === "alle" || istVokabelBereich(bereich))) teile.push("Vokabeln Deutsch → Latein");
+  $("printAuswahl").textContent = teile.join(" – ") + ` (${selected.length} Karten)`;
+  document.querySelectorAll("[data-druck]").forEach(b => b.classList.toggle("active", b.dataset.druck === druckUmfang));
+
+  const PER_SHEET = 8;
+  const cell = (card, idx, side) => !card ? `<div class="p-card empty"></div>` :
+    `<div class="p-card"><span class="p-tag">${esc(card.q)}</span><span class="p-side">${side === "front" ? "Frage" : "Antwort"}</span>` +
+    (side === "front" ? `<div class="p-front">${card.front}</div>` : `<div class="p-back">${card.back}</div>`) +
+    `<span class="p-num">#${idx + 1}</span></div>`;
+
+  let html = "";
+  for (let s = 0; s < Math.ceil(selected.length / PER_SHEET); s++) {
+    const slice = Array.from({ length: PER_SHEET }, (_, i) => s * PER_SHEET + i);
+    const front = slice.map(i => cell(selected[i], i, "front")).join("");
+    // Rückseite: Spalten je Zeile tauschen, damit beim Wenden an der langen Kante alles passt
+    let back = "";
+    for (let r = 0; r < PER_SHEET / 2; r++) {
+      const left = slice[r * 2], right = slice[r * 2 + 1];
+      back += cell(selected[right], right, "back") + cell(selected[left], left, "back");
+    }
+    html += `<div class="p-sheet"><span class="p-sheet-label">Blatt ${s + 1} – Vorderseite (Fragen)</span><div class="p-grid">${front}</div></div>`;
+    html += `<div class="p-sheet"><span class="p-sheet-label">Blatt ${s + 1} – Rückseite (Antworten)</span><div class="p-grid">${back}</div></div>`;
+  }
+  $("printOut").innerHTML = html;
+}
+
+function enterPrint() { zeigeAnsicht("print"); renderPrint(); }
+$("print").addEventListener("click", enterPrint);
+document.querySelectorAll("[data-druck]").forEach(b => b.addEventListener("click", () => { druckUmfang = b.dataset.druck; renderPrint(); }));
+// Strg+P aus der Kartenansicht druckt automatisch die aktuelle Auswahl im Kartenformat
+window.addEventListener("beforeprint", () => {
+  if (document.body.dataset.view !== "print") { autoPrint = true; enterPrint(); }
+});
+window.addEventListener("afterprint", () => { if (autoPrint) { autoPrint = false; zurUebersicht(); } });
+
+// ==================== Als App (nur wenn über das Internet geöffnet) ====================
+if (location.protocol.startsWith("http")) {
+  const m = document.createElement("link");
+  m.rel = "manifest"; m.href = "manifest.json";
+  document.head.appendChild(m);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+// ==================== Start ====================
+renderMenus();
+setBereich(bereich, filter);
+</script>
+</body>
+</html>

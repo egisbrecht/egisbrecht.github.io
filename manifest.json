@@ -1,0 +1,15 @@
+{
+  "name": "Lernkarten",
+  "short_name": "Lernkarten",
+  "description": "Lernkarten mit Wiederholungsplan – Anatomie, Vokabeln, Zytologie",
+  "lang": "de",
+  "start_url": "Lernkarten.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121418",
+  "theme_color": "#b3001b",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
